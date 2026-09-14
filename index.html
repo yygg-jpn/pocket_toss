@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Pocket Toss v57</title>
+<title>Pocket Toss v58</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Comic+Relief:wght@400;700&display=swap" rel="stylesheet">
@@ -15,7 +15,8 @@ body{display:flex;justify-content:center;align-items:center;background:#fff}
 /* The game is authored as a portrait/mobile layout. On wide desktop browsers,
    keep a phone-like playfield instead of stretching the canvas across the whole screen. */
 @media (min-width:700px) and (orientation:landscape){
-  #app{width:min(520px,calc(100dvh * .53));height:100dvh}
+  html,body{background:#000}
+  #app{width:min(520px,calc(100dvh * .53));height:100dvh;background:#fff}
 }
 canvas{display:block;width:100%;height:100%;border:0;outline:0}
 #stoneOverlay{position:absolute;inset:0;z-index:70;pointer-events:none;background:transparent}

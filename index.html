@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Pocket Toss v55</title>
+<title>Pocket Toss v57</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Comic+Relief:wght@400;700&display=swap" rel="stylesheet">
@@ -12,6 +12,11 @@
 html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#fff;touch-action:none;font-family:'Comic Sans MS','Comic Relief','Comic Sans','Chalkboard SE','Comic Neue',cursive}
 body{display:flex;justify-content:center;align-items:center;background:#fff}
 #app{position:relative;width:100vw;height:100dvh;background:#fff;overflow:hidden;border:0;outline:0}
+/* The game is authored as a portrait/mobile layout. On wide desktop browsers,
+   keep a phone-like playfield instead of stretching the canvas across the whole screen. */
+@media (min-width:700px) and (orientation:landscape){
+  #app{width:min(520px,calc(100dvh * .53));height:100dvh}
+}
 canvas{display:block;width:100%;height:100%;border:0;outline:0}
 #stoneOverlay{position:absolute;inset:0;z-index:70;pointer-events:none;background:transparent}
 #hud{position:absolute;left:0;right:0;height:54px;display:grid;grid-template-columns:82px 1px 82px 1px 82px;column-gap:18px;justify-content:center;align-items:center;color:#111;pointer-events:none;font-family:'Comic Sans MS','Comic Relief','Comic Sans','Chalkboard SE','Comic Neue',cursive}
@@ -46,10 +51,33 @@ canvas{display:block;width:100%;height:100%;border:0;outline:0}
 #bgDebug{position:absolute;right:8px;bottom:6px;z-index:120;font:700 10px/1.25 'Comic Sans MS','Comic Sans',cursive;color:#111;background:rgba(255,255,255,.82);padding:4px 6px;border-radius:8px;pointer-events:none;max-width:72vw;text-align:right}
 #kexSiteLink{position:absolute;left:10px;bottom:8px;z-index:121;font:700 10px/1.2 'Comic Sans MS','Comic Relief','Comic Sans','Chalkboard SE','Comic Neue',cursive;color:#111;text-decoration:none;background:rgba(255,255,255,.84);padding:4px 7px;border-radius:999px;pointer-events:auto;white-space:nowrap}
 #kexSiteLink:active{transform:scale(.97)}
+
+#inAppBrowserGate{position:absolute;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;background:#fff;color:#111;padding:28px;text-align:center;font-family:'Comic Sans MS','Comic Relief','Comic Sans','Chalkboard SE','Comic Neue',cursive}
+#inAppBrowserGate.show{display:flex}
+#inAppBrowserGate .gate-card{width:min(92vw,460px);display:flex;flex-direction:column;align-items:center;gap:14px}
+#inAppBrowserGate .gate-title{font-size:28px;font-weight:700;line-height:1.05}
+#inAppBrowserGate .gate-text{font-size:15px;line-height:1.55}
+#inAppBrowserGate .gate-app{font-size:12px;opacity:.65}
+#inAppBrowserGate .gate-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:4px}
+#inAppBrowserGate button{border:2px solid #111;border-radius:999px;background:#fff;color:#111;padding:10px 16px;font:700 15px 'Comic Sans MS','Comic Relief','Comic Sans','Chalkboard SE','Comic Neue',cursive}
+#inAppBrowserGate .gate-primary{background:#111;color:#fff}
 </style>
 </head>
 <body>
 <div id="app">
+<div id="inAppBrowserGate" aria-live="polite">
+  <div class="gate-card">
+    <div class="gate-title">OPEN IN BROWSER</div>
+    <div class="gate-text" id="gateText">このゲームはアプリ内ブラウザでは正常に動かない場合があります。<br>Chrome / Safari で開いてください。</div>
+    <div class="gate-app" id="gateApp"></div>
+    <div class="gate-actions">
+      <button id="openExternalBtn" class="gate-primary">BROWSERで開く</button>
+      <button id="copyUrlBtn">URLをコピー</button>
+      <button id="continueInAppBtn">このまま試す</button>
+    </div>
+  </div>
+</div>
+
 <canvas id="c"></canvas>
 <canvas id="stoneOverlay"></canvas>
 <div id="hud">
@@ -92,6 +120,65 @@ const introArrows=document.getElementById('introArrows'),leftArrow=document.getE
 const centerMessage=document.getElementById('centerMessage'),centerTitle=document.getElementById('centerTitle'),centerScore=document.getElementById('centerScore');
 const replayBtn=document.getElementById('replayBtn'),shareBtn=document.getElementById('shareBtn'),closeBtn=document.getElementById('closeBtn'),endActions=document.getElementById('endActions');
 const kexSiteLink=document.getElementById('kexSiteLink');
+const inAppBrowserGate=document.getElementById('inAppBrowserGate');
+const gateApp=document.getElementById('gateApp');
+const openExternalBtn=document.getElementById('openExternalBtn');
+const copyUrlBtn=document.getElementById('copyUrlBtn');
+const continueInAppBtn=document.getElementById('continueInAppBtn');
+
+// Detect common social-app in-app browsers. We only show an advisory gate;
+// users can still continue if that particular WebView works on their device.
+function detectInAppBrowser(){
+  const ua=navigator.userAgent||'';
+  if(/Line\//i.test(ua)) return 'LINE';
+  if(/Instagram/i.test(ua)) return 'Instagram';
+  if(/FBAN|FBAV|FB_IAB|Messenger/i.test(ua)) return 'Messenger / Facebook';
+  if(/WhatsApp/i.test(ua)) return 'WhatsApp';
+  return '';
+}
+function externalBrowserUrl(){
+  const href=location.href;
+  const isAndroid=/Android/i.test(navigator.userAgent||'');
+  if(isAndroid && /^https?:/i.test(href)){
+    const u=new URL(href);
+    return 'intent://'+u.host+u.pathname+u.search+u.hash+'#Intent;scheme='+u.protocol.replace(':','')+';package=com.android.chrome;S.browser_fallback_url='+encodeURIComponent(href)+';end';
+  }
+  return href;
+}
+const detectedInApp=detectInAppBrowser();
+if(detectedInApp && inAppBrowserGate){
+  gateApp.textContent=detectedInApp+' のアプリ内ブラウザを検出';
+  if(/iPhone|iPad|iPod/i.test(navigator.userAgent||'')){
+    openExternalBtn.textContent='URLをコピーしてSafariへ';
+  }else{
+    openExternalBtn.textContent='CHROMEで開く';
+  }
+  inAppBrowserGate.classList.add('show');
+}
+openExternalBtn&&openExternalBtn.addEventListener('click',async()=>{
+  const href=location.href;
+  if(/iPhone|iPad|iPod/i.test(navigator.userAgent||'')){
+    try{await navigator.clipboard.writeText(href);openExternalBtn.textContent='COPIED — Safariで開く';}
+    catch(_e){location.href=href;}
+    return;
+  }
+  try{location.href=externalBrowserUrl();}catch(_e){location.href=href;}
+});
+copyUrlBtn&&copyUrlBtn.addEventListener('click',async()=>{
+  try{
+    await navigator.clipboard.writeText(location.href);
+    copyUrlBtn.textContent='COPIED';
+    setTimeout(()=>copyUrlBtn.textContent='URLをコピー',1400);
+  }catch(_e){
+    const ta=document.createElement('textarea');ta.value=location.href;document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');copyUrlBtn.textContent='COPIED';}catch(__e){}
+    ta.remove();
+  }
+});
+continueInAppBtn&&continueInAppBtn.addEventListener('click',()=>{
+  inAppBrowserGate.classList.remove('show');
+  setTimeout(fit,50);
+});
 const newsTicker=document.getElementById('newsTicker'),newsItem=document.getElementById('newsItem');
 function popScore(){
   scoreEl.classList.remove('score-pop');

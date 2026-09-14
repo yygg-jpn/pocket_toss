@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Pocket Toss v58</title>
+<title>Pocket Toss v60</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Comic+Relief:wght@400;700&display=swap" rel="stylesheet">
@@ -32,11 +32,13 @@ canvas{display:block;width:100%;height:100%;border:0;outline:0}
 #bonus.bonus-pop{animation:bonusPocketPop .62s ease-out forwards}
 @keyframes bonusPocketPop{0%{opacity:0;transform:translate(-50%,-35%) scale(.78)}18%{opacity:1;transform:translate(-50%,-55%) scale(1.08)}70%{opacity:1;transform:translate(-50%,-92%) scale(1)}100%{opacity:0;transform:translate(-50%,-125%) scale(.94)}}
 
-#centerTitle.intro-blink{font-size:30px!important;line-height:1.12!important;max-width:88%;letter-spacing:.01em;animation:introBlink .4s steps(1,end) 5}
+#centerTitle.intro-blink{font-size:32px!important;line-height:1.12!important;max-width:90%;letter-spacing:.01em;color:#fff;text-shadow:0 2px 5px rgba(0,0,0,.75),0 0 2px rgba(0,0,0,.9);animation:introBlink .55s steps(1,end) 5}
+#centerTitle.intro-start{font-size:48px!important;line-height:1!important;letter-spacing:.03em;animation:startPop .65s ease-out 1}
 #centerTitle.end-result,#centerScore.end-result{font-size:39px!important;line-height:1.05!important;font-weight:500!important}
 #centerScore.end-result{margin-top:10px!important}
 #endActions button{border:2px solid #111;border-radius:999px;background:#fff;color:#111;padding:8px 13px;font:700 15px 'Comic Sans MS','Comic Relief','Comic Sans','Chalkboard SE','Comic Neue',cursive;white-space:nowrap}
-@keyframes introBlink{0%{opacity:1;transform:scale(1)}45%{opacity:1;transform:scale(1.18)}50%{opacity:0;transform:scale(1.18)}100%{opacity:0;transform:scale(1)}}
+@keyframes introBlink{0%,64%{opacity:1}65%,100%{opacity:0}}
+@keyframes startPop{0%{opacity:0;transform:scale(.82)}28%{opacity:1;transform:scale(1.12)}100%{opacity:1;transform:scale(1)}}
 #newsTicker{position:absolute;left:0;right:0;height:62px;display:block;background:transparent;color:#111;border:0;z-index:45;overflow:hidden;font-family:'Comic Sans MS','Comic Relief','Comic Sans','Chalkboard SE','Comic Neue',cursive;cursor:pointer;user-select:none;-webkit-user-select:none}
 #newsTicker.no-link{cursor:default}
 #newsLabel{display:none}
@@ -44,7 +46,7 @@ canvas{display:block;width:100%;height:100%;border:0;outline:0}
 #newsItem{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:1px;overflow:hidden}
 .news-row{position:relative;width:100%;height:18px;overflow:hidden;white-space:nowrap}
 .news-track{position:absolute;left:0;top:0;display:inline-block;white-space:nowrap;will-change:transform;font-size:12px;line-height:18px}
-.news-row.headline .news-track{position:static;display:block;transform:none!important;font-size:13px;font-weight:700;padding-left:0;overflow:hidden;text-overflow:ellipsis}
+.news-row.headline .news-track{position:static;display:block;transform:none!important;font-size:13px;font-weight:700;padding-left:.5em;overflow:hidden;text-overflow:ellipsis}
 .news-row.jp .news-track{font-weight:700}
 .news-row.en .news-track{font-size:11px;font-weight:400}
 
@@ -429,20 +431,26 @@ function normalizeHeader(s){
   return String(s||'').trim().toUpperCase().replace(/\s+/g,'');
 }
 function buildNewsRow(vals, map){
-  const get=(name, fallbackIndex)=>{
-    const i=(map && map[name]!=null)?map[name]:fallbackIndex;
-    return i>=0 && i<vals.length ? vals[i] : '';
+  // NEWS is read by header name only. Current sheet columns:
+  // ON/OFF | START | END | HEADLINE | TEXT JP | TEXT EN | PRIORITY
+  const get=(...names)=>{
+    for(const name of names){
+      const key=normalizeHeader(name);
+      if(map && map[key]!=null){
+        const i=map[key];
+        return i>=0 && i<vals.length ? vals[i] : '';
+      }
+    }
+    return '';
   };
   return {
-    on:String(get('ON/OFF',0)||'').trim().toUpperCase(),
-    start:parseLooseDate(get('START',1)),
-    end:parseLooseDate(get('END',2)),
-    category:String(get('CATEGORY',3)||'').trim(),
-    headline:String(get('HEADLINE',4)||'').trim(),
-    textJp:String(get('TEXTJP',5)||get('TEXT',5)||'').trim(),
-    textEn:String(get('TEXTEN',6)||'').trim(),
-    url:String(get('URL',7)||'').trim(),
-    priority:Number(get('PRIORITY',8)||0)||0
+    on:String(get('ON/OFF')||'').trim().toUpperCase(),
+    start:parseLooseDate(get('START')),
+    end:parseLooseDate(get('END')),
+    headline:String(get('HEADLINE')||'').trim(),
+    textJp:String(get('TEXT JP','TEXTJP','TEXT')||'').trim(),
+    textEn:String(get('TEXT EN','TEXTEN')||'').trim(),
+    priority:Number(get('PRIORITY')||0)||0
   };
 }
 function parseCsv(text){
@@ -484,7 +492,7 @@ function refreshActiveNews(resetIndex=false){
     if(n.on!=='ON') return false;
     if(n.start && now<n.start) return false;
     if(n.end && now>n.end) return false;
-    return !!(n.headline||n.textJp||n.textEn||n.category);
+    return !!(n.headline||n.textJp||n.textEn);
   }).sort((a,b)=>{
     if(b.priority!==a.priority) return b.priority-a.priority;
     const bs=b.start?b.start.getTime():0, as=a.start?a.start.getTime():0;
@@ -496,7 +504,7 @@ function refreshActiveNews(resetIndex=false){
 function newsDisplayLines(n){
   if(!n) return {headline:'KYOTO EXPERIMENT 2026',jp:'',en:''};
   return {
-    headline:n.headline||n.category||'NEWS',
+    headline:n.headline||'NEWS',
     jp:n.textJp||'',
     en:n.textEn||''
   };
@@ -548,9 +556,8 @@ function renderCurrentNews(immediate=false){
   const lines=newsDisplayLines(n);
   newsLabel.textContent='';
   const text=[lines.headline,lines.jp,lines.en].filter(Boolean).join(' / ');
-  const url=n&&n.url?n.url:'';
-  newsTicker.dataset.url=url;
-  newsTicker.classList.toggle('no-link',!url);
+  newsTicker.dataset.url='';
+  newsTicker.classList.add('no-link');
   newsTicker.setAttribute('aria-label',text||'NEWS');
   setNewsItemLines(lines);
   requestAnimationFrame(()=>requestAnimationFrame(startNewsMarquee));
@@ -577,7 +584,7 @@ function loadKexNewsViaJsonp(){
     function cleanup(){clearTimeout(timeout);try{delete window[cb]}catch(e){};script.remove();}
     window[cb]=data=>{const rows=normalizeNewsFromGviz(data);cleanup();rows.length?resolve(rows):reject(new Error('GViz returned no news rows'));};
     script.onerror=()=>{cleanup();reject(new Error('GViz JSONP load failed'));};
-    script.src=`https://docs.google.com/spreadsheets/d/${KEX_SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(KEX_NEWS_SHEET)}&headers=1&tqx=responseHandler:${cb}&tq=${encodeURIComponent('select A,B,C,D,E,F,G,H,I')}&_=${Date.now()}`;
+    script.src=`https://docs.google.com/spreadsheets/d/${KEX_SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(KEX_NEWS_SHEET)}&headers=1&tqx=responseHandler:${cb}&tq=${encodeURIComponent('select A,B,C,D,E,F,G')}&_=${Date.now()}`;
     document.head.appendChild(script);
   });
 }
@@ -637,6 +644,15 @@ let dragging=false,mode=null,aimX=0,aimY=0,resetTimer=0,scored=false,bonusTimer=
 let pocketBulge=0,pocketBulgeTimer=0;
 let swipeGuideVisible=true,swipeGuideT=0;
 let timeLeft=60,gameOver=false,gameStarted=false;
+let playLogged=false;
+const PLAYLOG_URL='https://script.google.com/macros/s/AKfycbwpV09IGN3b2KBLIVQUQEwnmYdBgaTUfuTLpzzUbJlVreiptkVJ4vhCPbDc4Ye4re486A/exec';
+function logPlayStart(){
+  if(playLogged) return;
+  playLogged=true;
+  try{
+    fetch(PLAYLOG_URL+'?t='+Date.now(),{mode:'no-cors',cache:'no-store',keepalive:true}).catch(()=>{});
+  }catch(_e){}
+}
 let introState='waiting',introTimer=0,introFlashes=0,introDone=false,replayDelay=0;
 let haloTimer=0,haloDuration=425;
 
@@ -679,7 +695,7 @@ function fit(){
  const naturalH=bg.naturalHeight||1420;
  const croppedRatio=(naturalH*(1-cropTop-cropBottom))/naturalW;
 
- const topWhiteH=102;              // three full-width news rows need a little more white space
+ const topWhiteH=92;               // bring the three news rows closer to the poster
  imageH=W*croppedRatio;
  imageTop=topWhiteH;               // poster begins AFTER the white news band
  imageBottom=imageTop+imageH;
@@ -767,7 +783,7 @@ c.addEventListener('pointerdown',e=>{
    swipeGuideVisible=false;
    introState='start';introTimer=0;
    centerMessage.style.display='flex';
-   centerTitle.classList.remove('end-result');
+   centerTitle.classList.remove('end-result','intro-start');
    centerScore.classList.remove('end-result');
    centerTitle.classList.add('intro-blink');
    centerTitle.textContent='THROW THE ROCK IN THE POCKET!';
@@ -1037,15 +1053,26 @@ function showBonus(points){
 function update(dt){
  const t=dt/16.6667;
 
- // Intro: swipe guide loops until the stone is touched, then START.
+ // Intro: stone pulses until touched. Then the instruction blinks five times,
+ // followed by a short START cue. The stone itself no longer pulses a second time.
  swipeGuideT+=dt;
  if(!introDone && introState==='start'){
    introTimer+=dt;
-   if(introTimer>=2000){
-     centerMessage.style.display='none';
+   if(introTimer>=2750){
      centerTitle.classList.remove('intro-blink');
+     centerTitle.classList.add('intro-start');
+     centerTitle.textContent='START';
+     introState='ready';
+     introTimer=0;
+   }
+ }else if(!introDone && introState==='ready'){
+   introTimer+=dt;
+   if(introTimer>=650){
+     centerMessage.style.display='none';
+     centerTitle.classList.remove('intro-start');
      introDone=true;
      gameStarted=true;
+     logPlayStart();
      timeLeft=60;
      timeEl.textContent='60';
    }
@@ -1300,19 +1327,25 @@ function drawPocket(){
 function drawStone(){
  if(!stoneImg.complete||!stoneImg.naturalWidth)return;
  const h=stone.w*stoneImg.naturalHeight/stoneImg.naturalWidth;
- let introScale=1;
- if(!introDone && introState==='start'){
-   // Five small pops, synchronized to the five THROW THE ROCK blinks.
-   const cycle=400;
-   const phase=(introTimer%cycle)/cycle;
-   introScale=1+0.38*Math.sin(Math.PI*phase);
- }
  ctx.save();ctx.translate(stone.x,stone.y);ctx.rotate(stone.rot);
- const introPulse=(introState==='start'&&!introDone)?Math.sin(Math.PI*((introTimer%400)/400)):0;
+ // Only the initial waiting phase pulses. After the stone is tapped,
+ // the THROW message takes over without a second stone pulse.
  const waitingPulse=(introState==='waiting'&&!introDone)?Math.sin(Math.PI*((swipeGuideT%800)/800)):0;
- const stoneIntroScale=1+Math.max(introPulse,waitingPulse)*1.0; // up to 2x for clear start cue
- ctx.scale(stoneIntroScale,stoneIntroScale);ctx.scale(introScale,introScale);
+ const stoneIntroScale=1+waitingPulse*1.0; // up to 2x for clear start cue
+ ctx.scale(stoneIntroScale,stoneIntroScale);
  ctx.drawImage(stoneImg,-stone.w/2,-h/2,stone.w,h);ctx.restore();
+}
+function drawClickCue(){
+ if(introDone || introState!=='waiting')return;
+ const pulse=Math.sin(Math.PI*((swipeGuideT%800)/800));
+ ctx.save();
+ ctx.font="700 18px 'Comic Sans MS','Comic Relief','Comic Sans','Chalkboard SE','Comic Neue',cursive";
+ ctx.textAlign='center';ctx.textBaseline='middle';
+ ctx.fillStyle='#fff';
+ ctx.globalAlpha=.82+.18*pulse;
+ ctx.shadowColor='rgba(0,0,0,.58)';ctx.shadowBlur=5;ctx.shadowOffsetY=1;
+ ctx.fillText('CLICK!',stone.x,stone.y-58-10*pulse);
+ ctx.restore();
 }
 function drawStoneOverlay(){
  // The main canvas stays behind the DOM UI. This transparent canvas only redraws
@@ -1323,14 +1356,8 @@ function drawStoneOverlay(){
  const h=stone.w*stoneImg.naturalHeight/stoneImg.naturalWidth;
  const top=stone.y-h*1.1, bottom=stone.y+h*1.1;
  if(top>=imageTop && bottom<=imageBottom)return;
- let introScale=1;
- if(!introDone && introState==='start'){
-   const cycle=400,phase=(introTimer%cycle)/cycle;
-   introScale=1+0.38*Math.sin(Math.PI*phase);
- }
- const introPulse=(introState==='start'&&!introDone)?Math.sin(Math.PI*((introTimer%400)/400)):0;
  const waitingPulse=(introState==='waiting'&&!introDone)?Math.sin(Math.PI*((swipeGuideT%800)/800)):0;
- const stoneIntroScale=1+Math.max(introPulse,waitingPulse)*1.0;
+ const stoneIntroScale=1+waitingPulse*1.0;
  stoneCtx.save();
  // Clip out the poster itself. Only the white bands are drawn on this upper layer.
  stoneCtx.beginPath();
@@ -1338,7 +1365,7 @@ function drawStoneOverlay(){
  stoneCtx.rect(0,imageBottom,W,Math.max(0,H-imageBottom));
  stoneCtx.clip('evenodd');
  stoneCtx.translate(stone.x,stone.y);stoneCtx.rotate(stone.rot);
- stoneCtx.scale(stoneIntroScale*introScale,stoneIntroScale*introScale);
+ stoneCtx.scale(stoneIntroScale,stoneIntroScale);
  stoneCtx.drawImage(stoneImg,-stone.w/2,-h/2,stone.w,h);
  stoneCtx.restore();
 }
@@ -1361,6 +1388,8 @@ function drawSwipeGuide(){
  ctx.restore();
 }
 function drawIntroSwipeIcon(){
+ // Keep the post-tap phase clean: no second hand/stone pulse.
+ return;
  if(introDone || introState!=='start')return;
  const cycle=400,phase=(introTimer%cycle)/cycle,pop=Math.sin(Math.PI*phase),sc=1+0.52*pop;
  const size=Math.min(146,Math.max(108,W*.21));
@@ -1383,6 +1412,7 @@ function draw(){
    drawAim();
    drawStone();
  }
+ drawClickCue();
  drawIntroSwipeIcon();
  drawSwipeGuide();
  ctx.restore();
@@ -1419,13 +1449,14 @@ async function restartGame(){
   timeEl.textContent='60';
   gameOver=false;
   gameStarted=false;
+  playLogged=false;
   introDone=false;
   introState='waiting';
   introTimer=0;
   replayDelay=0;
   endActions.style.display='none';
   centerMessage.style.display='none';
-  centerTitle.classList.remove('intro-blink','end-result');
+  centerTitle.classList.remove('intro-blink','intro-start','end-result');
   centerScore.classList.remove('end-result');
   centerTitle.textContent='';
   centerScore.textContent='';

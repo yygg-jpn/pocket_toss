@@ -827,7 +827,11 @@ function fit(){
    pocket.targetX=pocket.x;pocket.targetY=pocket.y;
    pocket.prevX=pocket.x;pocket.prevY=pocket.y;pocket.prevRot=pocket.rot;
  }
- if(stone.resting)resetStone();
+ if(stone.resting && !dragging){
+   stone.y=imageBottom; stone.prevY=stone.y;
+   stone.x=Math.max(Math.max(54,W*.12),Math.min(W-Math.max(54,W*.12),stone.x));
+   stone.prevX=stone.x;
+ }
  layoutIntro();
 
  // News lives only in the upper WHITE margin. It never covers the poster.
@@ -886,7 +890,7 @@ function enterFullscreen(){
 }
 function firstGestureFullscreen(){
   // Do not consume the only attempt if Chrome rejects it during initial loading.
-  if(!document.fullscreenElement && !document.webkitFullscreenElement)enterFullscreen();
+  if(!introDone && !document.fullscreenElement && !document.webkitFullscreenElement)enterFullscreen();
   setTimeout(()=>{try{window.scrollTo(0,1)}catch(_e){};fit();},160);
 }
 // Request fullscreen on the very first touch anywhere in the game, not only on the stone.
@@ -896,6 +900,7 @@ app.addEventListener('pointerdown',unlockSound,{capture:true,passive:true});
 document.addEventListener('fullscreenchange',()=>setTimeout(fit,50));
 document.addEventListener('webkitfullscreenchange',()=>setTimeout(fit,50));
 
+let activeSwipePointer=null;
 c.addEventListener('pointerdown',e=>{
  if(gameOver||!stone.resting)return;
  const p=pos(e),dx=p.x-stone.x,dy=p.y-stone.y;
@@ -916,15 +921,17 @@ c.addEventListener('pointerdown',e=>{
  }
 
  dragging=true;mode='aim';aimX=p.x;aimY=p.y;swipeGuideVisible=false;
- c.setPointerCapture?.(e.pointerId);
+ activeSwipePointer=e.pointerId;
+ try{c.setPointerCapture?.(e.pointerId)}catch(_e){}
 });
 c.addEventListener('pointermove',e=>{
- if(gameOver||!dragging||!stone.resting)return;
+ if(gameOver||!dragging||!stone.resting||e.pointerId!==activeSwipePointer)return;
  const p=pos(e);aimX=p.x;aimY=p.y;
 });
-c.addEventListener('pointerup',()=>{
- if(gameOver||!dragging||!stone.resting)return;
- dragging=false;
+c.addEventListener('pointerup',e=>{
+ if(gameOver||!dragging||!stone.resting||e.pointerId!==activeSwipePointer)return;
+ const release=pos(e);aimX=release.x;aimY=release.y;
+ activeSwipePointer=null;dragging=false;
  const dx=aimX-stone.x,dy=aimY-stone.y,len=Math.hypot(dx,dy);
  if(len<28){mode=null;return}
  const maxSwipe=Math.min(190,imageH*.28),clamped=Math.min(maxSwipe,len);
@@ -934,6 +941,9 @@ c.addEventListener('pointerup',()=>{
  stone.vx=ux*speed;
  stone.vy=uy*speed;
  stone.resting=false;mode=null;playSound('throw');
+});
+c.addEventListener('pointercancel',e=>{
+ if(e.pointerId===activeSwipePointer){activeSwipePointer=null;dragging=false;mode=null;}
 });
 
 function circleRect(cx,cy,r,left,top,right,bottom){

@@ -63,6 +63,9 @@ canvas{display:block;width:100%;height:100%;border:0;outline:0}
 #inAppBrowserGate .gate-card{width:min(92vw,460px);display:flex;flex-direction:column;align-items:center;gap:14px}
 #inAppBrowserGate .gate-title{font-size:28px;font-weight:700;line-height:1.05}
 #inAppBrowserGate .gate-text{font-size:15px;line-height:1.55}
+#iosBrowserHelp{border:1px solid #111;padding:12px;text-align:left;width:100%;box-sizing:border-box}
+#iosBrowserHelp[hidden]{display:none}
+#iosBrowserHelp small{font-size:12px}
 #inAppBrowserGate .gate-app{font-size:12px;opacity:.65}
 #inAppBrowserGate .gate-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:4px}
 #inAppBrowserGate button{border:2px solid #111;border-radius:999px;background:#fff;color:#111;padding:10px 16px;font:700 15px 'Comic Sans MS','Comic Relief','Comic Sans','Chalkboard SE','Comic Neue',cursive}
@@ -74,7 +77,7 @@ canvas{display:block;width:100%;height:100%;border:0;outline:0}
 <div id="inAppBrowserGate" aria-live="polite">
   <div class="gate-card">
     <div class="gate-title">OPEN IN BROWSER</div>
-    <div class="gate-text" id="gateText">このゲームはアプリ内ブラウザでは正常に動かない場合があります。<br>Chrome / Safari で開いてください。</div>
+    <div class="gate-text" id="gateText">このゲームはアプリ内ブラウザでは正常に動かない場合があります。<br>Chrome / Safari などの外部ブラウザで開いてください。</div><div class="gate-text" id="iosBrowserHelp" hidden>①「URLをコピー」を押す<br>② Safariなどのブラウザを開く<br>③ アドレス欄に貼り付けて開く<br><small>アプリ内の「…」メニューに「ブラウザで開く」がある場合は、そちらも利用できます。</small></div>
     <div class="gate-app" id="gateApp"></div>
     <div class="gate-actions">
       <button id="openExternalBtn" class="gate-primary">BROWSERで開く</button>
@@ -129,6 +132,7 @@ const replayBtn=document.getElementById('replayBtn'),shareBtn=document.getElemen
 const kexSiteLink=document.getElementById('kexSiteLink');
 const inAppBrowserGate=document.getElementById('inAppBrowserGate');
 const gateApp=document.getElementById('gateApp');
+const iosBrowserHelp=document.getElementById('iosBrowserHelp');
 const openExternalBtn=document.getElementById('openExternalBtn');
 const copyUrlBtn=document.getElementById('copyUrlBtn');
 const continueInAppBtn=document.getElementById('continueInAppBtn');
@@ -156,7 +160,9 @@ const detectedInApp=detectInAppBrowser();
 if(detectedInApp && inAppBrowserGate){
   gateApp.textContent=detectedInApp+' のアプリ内ブラウザを検出';
   if(/iPhone|iPad|iPod/i.test(navigator.userAgent||'')){
-    openExternalBtn.textContent='URLをコピーしてSafariへ';
+    openExternalBtn.textContent='外部ブラウザでの開き方';
+    if(iosBrowserHelp) iosBrowserHelp.hidden=false;
+    if(copyUrlBtn) copyUrlBtn.textContent='URLをコピー';
   }else{
     openExternalBtn.textContent='CHROMEで開く';
   }
@@ -165,8 +171,9 @@ if(detectedInApp && inAppBrowserGate){
 openExternalBtn&&openExternalBtn.addEventListener('click',async()=>{
   const href=location.href;
   if(/iPhone|iPad|iPod/i.test(navigator.userAgent||'')){
-    try{await navigator.clipboard.writeText(href);openExternalBtn.textContent='COPIED — Safariで開く';}
-    catch(_e){location.href=href;}
+    // iOS in-app browsers cannot reliably launch Safari from a web-page button.
+    // Show real instructions instead of navigating to the same embedded browser.
+    if(iosBrowserHelp){iosBrowserHelp.hidden=false;iosBrowserHelp.scrollIntoView({block:'nearest'});}
     return;
   }
   try{location.href=externalBrowserUrl();}catch(_e){location.href=href;}
@@ -178,7 +185,7 @@ copyUrlBtn&&copyUrlBtn.addEventListener('click',async()=>{
     setTimeout(()=>copyUrlBtn.textContent='URLをコピー',1400);
   }catch(_e){
     const ta=document.createElement('textarea');ta.value=location.href;document.body.appendChild(ta);ta.select();
-    try{document.execCommand('copy');copyUrlBtn.textContent='COPIED';}catch(__e){}
+    try{const copied=document.execCommand('copy');copyUrlBtn.textContent=copied?'COPIED':'コピーできませんでした';}catch(__e){copyUrlBtn.textContent='コピーできませんでした';}
     ta.remove();
   }
 });

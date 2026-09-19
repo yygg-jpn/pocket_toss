@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Pocket Toss v71</title>
+<title>KEX Pocket Toss</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Comic+Relief:wght@400;700&display=swap" rel="stylesheet">
@@ -54,6 +54,7 @@ canvas{display:block;width:100%;height:100%;border:0;outline:0}
 
 
 #bgDebug{position:absolute;right:8px;bottom:6px;z-index:120;font:700 10px/1.25 'Comic Sans MS','Comic Sans',cursive;color:#111;background:rgba(255,255,255,.82);padding:4px 6px;border-radius:8px;pointer-events:none;max-width:72vw;text-align:right}
+#gameCredit{position:absolute;bottom:31px;left:0;right:0;z-index:50;text-align:center;font:500 9px/1.2 'Comic Sans MS','Comic Relief',cursive;color:#111;pointer-events:none;background:#fff;padding:2px 0}
 #kexSiteLink{position:absolute;left:10px;bottom:8px;z-index:121;font:700 10px/1.2 'Comic Sans MS','Comic Relief','Comic Sans','Chalkboard SE','Comic Neue',cursive;color:#111;text-decoration:none;background:rgba(255,255,255,.84);padding:4px 7px;border-radius:999px;pointer-events:auto;white-space:nowrap}
 #kexSiteLink:active{transform:scale(.97)}
 
@@ -107,6 +108,7 @@ canvas{display:block;width:100%;height:100%;border:0;outline:0}
   <div id="newsLabel">NEWS</div>
   <div id="newsViewport"><div id="newsItem"><span class="news-jp">KYOTO EXPERIMENT 2026</span><span class="news-en">KYOTO EXPERIMENT 2026</span></div></div>
 </div>
+<div id="gameCredit" aria-label="Game credits">KEX Pocket Toss · KYOTO EXPERIMENT 2026 · Developed by yygg</div>
 <a id="kexSiteLink" href="https://kyoto-ex.jp/" aria-label="KYOTO EXPERIMENT website">KYOTO EXPERIMENT ↗</a>
 <div id="bgDebug">BG: starting…</div>
 <div id="endActions" style="position:absolute;left:16px;right:16px;display:none;justify-content:space-between;align-items:center;gap:8px;z-index:50;font-family:'Comic Sans MS','Comic Relief','Comic Sans','Chalkboard SE','Comic Neue',cursive">
@@ -817,7 +819,7 @@ function fit(){
  const croppedRatio=(naturalH*(1-cropTop-cropBottom))/naturalW;
 
  const topWhiteH=92;               // bring the three news rows closer to the poster
- imageH=W*croppedRatio;
+ imageH=Math.min(W*croppedRatio,Math.max(280,H-topWhiteH-158));
  imageTop=topWhiteH;               // poster begins AFTER the white news band
  imageBottom=imageTop+imageH;
  ceilingY=imageTop-imageH*.42;
@@ -839,12 +841,12 @@ function fit(){
  newsTicker.style.bottom='auto';
 
  // Lower WHITE margin keeps the original score / instruction hierarchy.
- const hudTop=imageBottom+16;
+ const hudTop=imageBottom+12;
  document.getElementById('hud').style.top=hudTop+'px';
  document.getElementById('hud').style.bottom='auto';
  hint.style.top=(hudTop+60)+'px';
  hint.style.bottom='auto';
- const actionTop=Math.min(hudTop+118,H-72);
+ const actionTop=Math.min(hudTop+110,H-72);
  endActions.style.top=actionTop+'px';
  endActions.style.bottom='auto';
  bonusEl.style.bottom='auto';
@@ -1396,7 +1398,8 @@ function drawBg(){
    const drawW=W+bleed*2;
    const drawH=drawW*(bg.naturalHeight/bg.naturalWidth);
    const drawY=imageTop-(drawH-imageH)/2;
-   ctx.drawImage(bg,-bleed,drawY,drawW,drawH);
+   ctx.save();ctx.beginPath();ctx.rect(0,imageTop,W,imageH);ctx.clip();
+   ctx.drawImage(bg,-bleed,drawY,drawW,drawH);ctx.restore();
  }
 }
 function drawHalo(){
@@ -1664,32 +1667,34 @@ async function makeShareImage(){
   octx.fillStyle='#fff';octx.fillRect(0,0,W,imageH);
   octx.drawImage(shareBg,-bleed,drawY,drawW,drawH);
 
-  // Share overlay: black score text, the rock centered, and capture date/time.
+  // Compact full-width rectangular share footer: keep the subject unobstructed.
   const fontFamily="'Comic Sans MS','Comic Relief','Comic Sans','Chalkboard SE','Comic Neue',cursive";
   const now=new Date();
   const pad=n=>String(n).padStart(2,'0');
   const stamp=`${now.getFullYear()}.${pad(now.getMonth()+1)}.${pad(now.getDate())}  ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
-  // Rock in the center of the poster crop.
+  const bandH=Math.min(imageH*.205,Math.max(94,W*.245));
+  const bandY=imageH-bandH;
+  octx.fillStyle='rgba(255,255,255,.70)'; // white panel, 30% transparent
+  octx.fillRect(0,bandY,W,bandH);
+  const padX=Math.max(10,W*.025);
+  const rockW=Math.min(bandH*.63,W*.145);
+  const rockH=stoneImg.naturalWidth?rockW*stoneImg.naturalHeight/stoneImg.naturalWidth:rockW;
   if(stoneImg.complete&&stoneImg.naturalWidth){
-    const rockW=Math.min(W*.27,imageH*.22);
-    const rockH=rockW*stoneImg.naturalHeight/stoneImg.naturalWidth;
-    octx.save();
-    octx.translate(W/2,imageH*.50);
-    octx.rotate(-0.08);
-    octx.drawImage(stoneImg,-rockW/2,-rockH/2,rockW,rockH);
-    octx.restore();
+    octx.drawImage(stoneImg,padX,bandY+(bandH-rockH)/2,rockW,rockH);
   }
-
-  octx.save();
-  octx.fillStyle='#000';
-  octx.shadowColor='transparent';
-  octx.textAlign='center';
-  octx.textBaseline='middle';
-  octx.font=`700 ${Math.max(34,W*.085)}px ${fontFamily}`;
-  octx.fillText(`SCORE ${score}`,W/2,imageH*.82);
-  octx.font=`700 ${Math.max(14,W*.032)}px ${fontFamily}`;
-  octx.fillText(stamp,W/2,imageH*.90);
+  const textX=padX+rockW+Math.max(9,W*.022);
+  const available=W-textX-padX;
+  octx.save();octx.fillStyle='#000';octx.shadowColor='transparent';
+  octx.textAlign='left';octx.textBaseline='top';
+  function shareLine(text,size,y,weight=700){
+    octx.font=`${weight} ${size}px ${fontFamily}`;
+    while(size>9&&octx.measureText(text).width>available){size-=.5;octx.font=`${weight} ${size}px ${fontFamily}`;}
+    octx.fillText(text,textX,y);
+  }
+  shareLine('I played KEX Pocket Toss !!',Math.min(20,W*.047),bandY+bandH*.10);
+  shareLine(`SCORE ${score}`,Math.min(26,W*.065),bandY+bandH*.40);
+  shareLine(stamp,Math.min(15,W*.035),bandY+bandH*.72,500);
   octx.restore();
 
   return new Promise((resolve,reject)=>out.toBlob(b=>b?resolve(b):reject(new Error('image export failed')),'image/png'));

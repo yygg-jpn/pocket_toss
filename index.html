@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
 <title>KEX Pocket Toss</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -53,7 +54,7 @@ canvas{display:block;width:100%;height:100%;border:0;outline:0}
 .news-row.en .news-track{font-size:11px;font-weight:400}
 
 
-#bgDebug{position:absolute;right:8px;bottom:6px;z-index:120;font:700 10px/1.25 'Comic Sans MS','Comic Sans',cursive;color:#111;background:rgba(255,255,255,.82);padding:4px 6px;border-radius:8px;pointer-events:none;max-width:72vw;text-align:right}
+#bgDebug{display:none!important;position:absolute;right:8px;bottom:6px;z-index:120;font:700 10px/1.25 'Comic Sans MS','Comic Sans',cursive;color:#111;background:rgba(255,255,255,.82);padding:4px 6px;border-radius:8px;pointer-events:none;max-width:72vw;text-align:right}
 #gameCredit{position:absolute;bottom:31px;left:0;right:0;z-index:50;text-align:center;font:500 9px/1.2 'Comic Sans MS','Comic Relief',cursive;color:#111;pointer-events:none;background:#fff;padding:2px 0}
 #kexSiteLink{position:absolute;left:10px;bottom:8px;z-index:121;font:700 10px/1.2 'Comic Sans MS','Comic Relief','Comic Sans','Chalkboard SE','Comic Neue',cursive;color:#111;text-decoration:none;background:rgba(255,255,255,.84);padding:4px 7px;border-radius:999px;pointer-events:auto;white-space:nowrap}
 #kexSiteLink:active{transform:scale(.97)}
@@ -210,7 +211,7 @@ let kexAllNews=[],kexActiveNews=[],kexNewsIndex=0,kexNewsTimer=null,kexRefreshTi
 // ---- BACKGROUNDS / Google Sheets ----
 const KEX_BACKGROUND_SHEET='BACKGROUNDS';
 const bgDebug=document.getElementById('bgDebug');
-function setBgDebug(msg){ if(bgDebug) bgDebug.textContent='BG: '+msg; console.log('[BG]',msg); }
+function setBgDebug(msg){ if(bgDebug) bgDebug.textContent='BG: '+msg; }
 let remoteBackgrounds=[];
 let verifiedRemoteBackgrounds=[];
 const bgWorkingUrlCache=new Map();
@@ -684,7 +685,7 @@ async function refreshPlayStats(){
     const data=await r.json();if(!data.ok)throw Error(data.error||'stats unavailable');
     if(Number.isFinite(Number(data.totalPlays)))totalPlaysEl.textContent=Number(data.totalPlays).toLocaleString('en-US');
     if(Number.isFinite(Number(data.bestScore))){best=Number(data.bestScore);bestEl.textContent=best;}
-  }catch(err){console.warn('Pocket Toss statistics unavailable:',err);}
+  }catch(_err){}
 }
 function logPlayStart(){
   if(playLogged)return;
